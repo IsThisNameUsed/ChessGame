@@ -114,6 +114,7 @@ public static class BoardManagment
     //Test si le déplacement est autorisé, si oui met à jour TabPosition
     public static bool majTabPosition(GameObject piece, GameObject target)
     {
+        String playerColor = (piece.name.Substring(0,1)=="W")? "White" : "Black";
         int iTarget, jTarget, iPiece, jPiece;
         bool moveAuthorized;
         iPiece = searchIndexIOfPiece(piece);
@@ -128,10 +129,20 @@ public static class BoardManagment
             if (moveAuthorized)
             {
                 tabPosition[iTarget, jTarget] = piece;
+                Debug.Log(piece.name + " case" + iTarget + jTarget);
                 //Suppression de piece à son ancien emplacement dans tabposition
                 tabPosition[iPiece, jPiece] = null;
                 BoardStateManagment.eraseControlAreaOf(piece);
-                BoardStateManagment.majBoard(iPiece, jPiece, iTarget, jTarget, piece, target);               
+                BoardStateManagment.majBoard(iPiece, jPiece, iTarget, jTarget, piece, target);
+                //Si le joueur se met lui même en échec annulation du déplacement
+                if(VictoryConditions.kingInCheck(playerColor))
+                {
+                    tabPosition[iPiece, jPiece] = piece;
+                    tabPosition[iTarget, jTarget] = null;
+                    BoardStateManagment.eraseControlAreaOf(piece);
+                    BoardStateManagment.majBoard(iPiece, jPiece, iTarget, jTarget, piece, target);
+                    return false;
+                }
                 return true;
             }
             else return false;
@@ -146,19 +157,26 @@ public static class BoardManagment
             moveAuthorized = Move.moveAuthorized(iPiece, jPiece, iTarget, jTarget, piece.name, target);
             if (moveAuthorized)
             {
+                
                 //Supression de piece à son ancien emplacement dans tabposition
                 tabPosition[iPiece, jPiece] = null;
                 //Remplacement dans tabPosition de target par piece
                 tabPosition[iTarget, jTarget] = piece;
+                Debug.Log(piece.name + " case" + iTarget + jTarget);
                 BoardStateManagment.eraseControlAreaOf(piece);
                 BoardStateManagment.majBoard(iPiece, jPiece, iTarget, jTarget, piece,target);
+                if (VictoryConditions.kingInCheck(playerColor))
+                {
+                    tabPosition[iPiece, jPiece] = piece;
+                    tabPosition[iTarget, jTarget] = target;
+                    BoardStateManagment.eraseControlAreaOf(piece);
+                    BoardStateManagment.majBoard(iPiece, jPiece, iTarget, jTarget, piece, target);
+                    return false;
+                }
                 return true;
             }
             else return false;
         }
-
-
-
     }
 
 
