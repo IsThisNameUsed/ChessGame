@@ -19,6 +19,7 @@ public class GameLoop : MonoBehaviour
 
         //initialisation du graveyard (toutes cases libres) et des positions des pièces
         BoardManagment.startPosition();
+        VictoryConditions.initializeCheck();
         //Color sert a déterminer quel joueur à le focus
         color = "Black";
         vscolor = "White";
@@ -76,6 +77,20 @@ public class GameLoop : MonoBehaviour
             if (moveOK == 0)
             {
                 BoardManagment.pieceLooseFocus(pieceSelected, color);
+                Debug.Log("GameLoop: verif echec");
+                if (VictoryConditions.kingInCheck(vscolor))
+                {
+                    if (vscolor == "White")
+                    {
+                        VictoryConditions.whiteKingInCheck = true;
+                    }
+                    else
+                    {
+                        VictoryConditions.blackKingInCheck = true;  
+                    }
+                    Debug.Log("VictoryConditions.searchMovementAuthorized");
+                    VictoryConditions.searchMovementAuthorized(vscolor);
+                }
                 temp = vscolor;
                 vscolor = color;
                 color = temp;
