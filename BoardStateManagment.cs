@@ -7,7 +7,6 @@ public class BoardStateManagment {
 
     public static List<GameObject>[,] whiteControlArea = new List<GameObject>[9, 9];
     public static List<GameObject>[,] blackControlArea = new List<GameObject>[9, 9];
-
     public static void initializeControlArea()
     {
         for (int i = 1; i <= 8; i++)
@@ -65,7 +64,7 @@ public class BoardStateManagment {
         //King
         whiteControlArea[1, 4].Add(BoardManagment.tabPosition[1, 5]);
         whiteControlArea[2, 4].Add(BoardManagment.tabPosition[1, 5]);
-        whiteControlArea[2, 4].Add(BoardManagment.tabPosition[1, 5]);
+        whiteControlArea[2, 5].Add(BoardManagment.tabPosition[1, 5]);
         whiteControlArea[2, 6].Add(BoardManagment.tabPosition[1, 5]);
         whiteControlArea[1, 6].Add(BoardManagment.tabPosition[1, 5]);
         blackControlArea[8, 4].Add(BoardManagment.tabPosition[8, 5]);
@@ -85,8 +84,8 @@ public class BoardStateManagment {
     private static void colorTileOriginalColor(int i, int j)
     {
         Material originalMaterial;
-        if ((i % 2 == 0 && j % 2 == 0) || (i % 2 != 0 && j % 2 != 0)) originalMaterial = Resources.Load("Black") as Material;
-        else originalMaterial = Resources.Load("White") as Material;
+        if ((i % 2 == 0 && j % 2 == 0) || (i % 2 != 0 && j % 2 != 0)) originalMaterial = Resources.Load("black field") as Material;
+        else originalMaterial = Resources.Load("white field") as Material;
         GameObject Tile = GameObject.Find("Tile" + i + j);
         Tile.GetComponent<Renderer>().material = originalMaterial;
     }
@@ -151,21 +150,13 @@ public class BoardStateManagment {
     private static void pawnCalculateControlArea(GameObject pawn)
     {
         int iPawn = BoardManagment.searchIndexIOfPiece(pawn);
-        int jPawn = BoardManagment.searchIndexJOfPiece(pawn);
-        int iTarget;
-        int jTarget = jPawn;
-        iTarget=(pawn.name.Substring(0, 1)) == "W" ?iPawn + 2 : iPawn - 2;
-        GameObject target = GameObject.Find("Tile" + iTarget + jTarget);
-        if (Move.moveAuthorized(iPawn, jPawn, iTarget, jTarget, pawn.name, target))
-        {
-            if (pawn.name.Substring(0, 1) == "W") whiteControlArea[iTarget, jTarget].Add(pawn);
-            else blackControlArea[iTarget, jTarget].Add(pawn);
-        }
+        int jPawn = BoardManagment.searchIndexJOfPiece(pawn); 
+        //Les deux cases en diagonale
         if (pawn.name.Substring(0, 1) == "W")
         {
             for(int j = jPawn-1;j<=jPawn+1;j++)
             {
-                if (j>8 || j<1) continue;
+                if (j>8 || j<1  || j==jPawn) continue;
                 whiteControlArea[iPawn + 1,j].Add(pawn);
             }         
         }
@@ -173,12 +164,30 @@ public class BoardStateManagment {
         {
             for (int j = jPawn - 1; j <= jPawn + 1; j++)
             {
-                if (j>8 || j<1) continue;
+                if (j>8 || j<1 || j==jPawn) continue;
                 blackControlArea[iPawn -1, j].Add(pawn);
             }
         }
 
     }
+
+    private static void kingCalculateControlArea(GameObject king)
+    {
+        List<GameObject>[,] controlArea = new List<GameObject>[9, 9];
+        if (king.name.Substring(0, 1) == "W") controlArea = whiteControlArea;
+        else controlArea = blackControlArea;
+        int jKing = BoardManagment.searchIndexIOfPiece(king);
+        int iKing = BoardManagment.searchIndexJOfPiece(king);
+        Debug.Log("ATTENTION" + king.name);
+        for(int i=iKing-1;i<=iKing+1;i++)
+        {
+            for(int j=jKing-1;j<=jKing+1;j++)
+            {
+                if(i>=1 && i<=8 && j>=1 && j<=8) controlArea[j, i].Add(king);
+            }
+        }
+    }
+
     private static int calculateControlArea(GameObject piece)
     {
         if (piece.name.Substring(1, 1) == "p")
@@ -186,8 +195,13 @@ public class BoardStateManagment {
             pawnCalculateControlArea(piece);
             return 0;
         }
+        else if (piece.name.Substring(1, 2) == "ki")
+        {
+            kingCalculateControlArea(piece);
+            return 0;
+        }
 
-        for(int iTarget=1;iTarget<=8;iTarget++)
+        for (int iTarget=1;iTarget<=8;iTarget++)
         {
             for(int jTarget=1;jTarget<=8;jTarget++)
             {
@@ -212,7 +226,7 @@ public class BoardStateManagment {
         clearControlArea(playedPiece);
         calculateControlArea(playedPiece);
         if (target.transform.tag.Substring(0,1) != "PT") clearControlArea(target);
-        //Traitement des pièce contrôlant la case de départ avant le coup
+        //Traitement des pièce contrôlant la case de départ de la pièce jouée
         GameObject[] blackPieceControlDeparture = copyListInTab(blackControlArea[iDeparture, jDeparture]);
         GameObject[] whitePieceControlDeparture = copyListInTab(whiteControlArea[iDeparture, jDeparture]);
         blackControlArea[iDeparture, jDeparture].Clear();
@@ -220,14 +234,19 @@ public class BoardStateManagment {
 
         if (blackPieceControlDeparture.Length > 0)
         {
+            string pieceName;
             for (int i = 0; i <= blackPieceControlDeparture.Length-1; i++)
             {
+                //les zones de contrôle des Rois, pions et chevalier ne sont pas modifiées
+                pieceName = blackPieceControlDeparture[i].name.Substring(1, 4);
+                //if (pieceName == "king" || pieceName == "pawn" || pieceName == "knig") continue;
                 clearControlArea(blackPieceControlDeparture[i]);
                 calculateControlArea(blackPieceControlDeparture[i]);
             }
         }
         if (whitePieceControlDeparture.Length > 0)
         {
+            
             for (int i = 0; i <= whitePieceControlDeparture.Length-1; i++)
             {
                 clearControlArea(whitePieceControlDeparture[i]);
@@ -244,7 +263,6 @@ public class BoardStateManagment {
         {
             for (int i = 0; i <= blackPieceControlDestination.Length-1; i++)
             {
-                Debug.Log(i);
                 clearControlArea(blackPieceControlDestination[i]);
                 calculateControlArea(blackPieceControlDestination[i]);
             }

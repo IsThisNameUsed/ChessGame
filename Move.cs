@@ -10,7 +10,7 @@ public static class Move
     {
         Vector3 position = new Vector3(0, 0, 0);
         position = tileTarget.transform.position;
-        position.y = (float)0.99;
+        position.y = (float)1.20;
         pieceSelectedNow.transform.position = position;
     }
 
@@ -21,11 +21,22 @@ public static class Move
 
     public static bool moveAuthorized(int iPiece, int jPiece, int iTarget, int jTarget, string pieceName, GameObject Target)
     {
-        if(VictoryConditions.kingInCheck(pieceName.Substring(0,1))) TRAITEMENT SPECIAL
+        string playerColor = (pieceName.Substring(0, 1));
+        //Traitement spécial des mouvements autorisés en cas d'échec au roi
+        if (VictoryConditions.whiteKingInCheck == true || VictoryConditions.blackKingInCheck == true)
+        {
+            Debug.Log("VictoryConditions.moveAuthorizedWhenKingInCheck" + playerColor);
+            if (VictoryConditions.moveAuthorizedWhenKingInCheck(pieceName, Target))
+            {
+                VictoryConditions.kingNoLongerInCheck();
+                return true;
+            }
+            else return false;
+        }
         switch (pieceName.Substring(1, 3))
         {
             case "paw":
-                if (pieceName.Substring(0, 1) == "B") return pawnMoveAuthorized(iPiece, jPiece, iTarget, jTarget, Target, "W");
+                if (playerColor == "B") return pawnMoveAuthorized(iPiece, jPiece, iTarget, jTarget, Target, "W");
                 else return pawnMoveAuthorized(iPiece, jPiece, iTarget, jTarget, Target, "B");
             case "bis":
                 return bishopMoveAuthorized(iPiece, jPiece, iTarget, jTarget);
@@ -34,11 +45,11 @@ public static class Move
             case "kni":
                 return knightMoveAuthorized(iPiece, jPiece, iTarget, jTarget);
             case "kin":
-                return kingMoveAuthorized(iPiece, jPiece, iTarget, jTarget);
+                return kingMoveAuthorized(iPiece, jPiece, iTarget, jTarget, playerColor);
             case "que":
                 return queenMoveAuthorized(iPiece, jPiece, iTarget, jTarget);
             default:
-                Debug.Log("Pice non valide");
+                Debug.Log("Piece non valide");
                 return false;
         }
     }
@@ -61,53 +72,70 @@ public static class Move
         return true;
     }
 
-    private static bool rookMoveAuthorized(int iRook, int jRook, int iTarget, int jTarget)
+    public static int[,] pathToTarget(int iPiece, int jPiece, int iTarget, int jTarget,int iIncrement, int jIncrement)
+    {
+        int i = iPiece + iIncrement, j = jPiece + jIncrement, pathIndex=0;
+        int[,] path = new int[2, 9];
+        if (iIncrement != 0)
+        {
+            while (i != iTarget)
+            {                
+                path[0, pathIndex] = i;
+                path[1, pathIndex] = j;
+                i += iIncrement;
+                j += jIncrement;
+                pathIndex += 1;
+            }
+            path[0, 8] = pathIndex;
+            return path;
+        }
+        else
+        {
+            while (j != jTarget)
+            {
+                path[0, pathIndex] = i;
+                path[1, pathIndex] = j;
+                j += jIncrement;
+                pathIndex += 1;
+            }
+            path[0, 8] = pathIndex;
+            return path;
+        }
+    }
+    public static bool rookMoveAuthorized(int iRook, int jRook, int iTarget, int jTarget)
     {
         int[,] path = new int[2, 9];
         int iDistance = calculateDistance(iTarget, iRook);
         int jDistance = calculateDistance(jTarget, jRook);
-        int pathIndex = 0, increment;
+        int increment;
         if (iDistance == 0 && jDistance != 0)
         {
             if (jDistance < 0) increment = -1;
             else increment = 1;
-            int jTrajectory = jRook + increment;
-
-            while (jTrajectory != jTarget)
-            {               
-                path[0, pathIndex] = iRook;
-                path[1, pathIndex] = jTrajectory;
-                jTrajectory += increment;
-                pathIndex += 1;
-            }
+            path = pathToTarget(iRook, jRook, iTarget, jTarget, 0, increment);
+            int pathIndex = path[0, 8];
             if (freePath(path, pathIndex)) return true;
         }
         else if (iDistance != 0 && jDistance == 0)
         {
             if (iDistance < 0) increment = -1;
-            else increment = 1;
-            int iTrajectory = iRook + increment;
-
-            while (iTrajectory != iTarget)
-            {
-                path[0, pathIndex] = iTrajectory;
-                path[1, pathIndex] = jRook;
-                iTrajectory += increment;
-                pathIndex += 1;
-            }
+            else increment = 1;          
+            path = pathToTarget(iRook, jRook, iTarget, jTarget, increment, 0);
+            int pathIndex = path[0, 8];
             if (freePath(path, pathIndex)) return true;
         }
         return false;
 
     }
 
-    private static bool pawnMoveAuthorized(int iPawn, int jPawn, int iTarget, int jTarget, GameObject Target, string opponentColor)
+    public static bool pawnMoveAuthorized(int iPawn, int jPawn, int iTarget, int jTarget, GameObject Target, string opponentColor)
     {
         int iDistance = calculateDistance(iTarget, iPawn);
         int jDistance = calculateDistance(jTarget, jPawn);
         int valid_iDistance;
         bool doubleMove;
         string playerColor;
+        if (iTarget > 8 || iTarget < 1) return false;
         if (opponentColor == "B")
         {
             playerColor = "W";
@@ -142,7 +170,7 @@ public static class Move
     }
 
 
-    private static bool bishopMoveAuthorized(int iBishop, int jBishop, int iTarget, int jTarget)
+    public static bool bishopMoveAuthorized(int iBishop, int jBishop, int iTarget, int jTarget)
     {
         int iDistance = Mathf.Abs(calculateDistance(iTarget, iBishop));
         int jDistance = Mathf.Abs(calculateDistance(jTarget, jBishop));
@@ -152,18 +180,17 @@ public static class Move
         if (iDistance == 1 && jDistance == 1) return true;
         if (jDistance == iDistance && iDistance != 0)
         {
-            int iPath, iIncrement, jPath, jIncrement, endTrajectory;
+            int iPath, iIncrement, jPath, jIncrement;
             if (iTarget > iBishop)
             {
                 iPath = iBishop + 1;
                 iIncrement = 1;
-                endTrajectory = iTarget - 1;
+               
             }
             else
             {
                 iPath = iBishop - 1;
                 iIncrement = -1;
-                endTrajectory = iTarget + 1;
             }
 
             if (jTarget > jBishop)
@@ -193,7 +220,7 @@ public static class Move
 
     }
 
-    private static bool knightMoveAuthorized(int iKnight, int jKnight, int iTarget, int jTarget)
+    public static bool knightMoveAuthorized(int iKnight, int jKnight, int iTarget, int jTarget)
     {
         int iDistance = Mathf.Abs(calculateDistance(iTarget, iKnight));
         int jDistance = Mathf.Abs(calculateDistance(jTarget, jKnight));
@@ -203,15 +230,17 @@ public static class Move
 
     }
 
-    private static bool kingMoveAuthorized(int iKing, int jKing, int iTarget, int jTarget)
+    public static bool kingMoveAuthorized(int iKing, int jKing, int iTarget, int jTarget, string playerColor)
     {
         int iDistance = Mathf.Abs(calculateDistance(iTarget, iKing));
         int jDistance = Mathf.Abs(calculateDistance(jTarget, jKing));
-        if (iDistance <= 1 && jDistance <= 1 && (iDistance == 1 || jDistance == 1)) return true;
+        if (playerColor == "B" && BoardStateManagment.whiteControlArea[iTarget, jTarget].Count != 0) return false;
+        else if (playerColor == "W" && BoardStateManagment.blackControlArea[iTarget, jTarget].Count != 0) return false;
+        else if (iDistance <= 1 && jDistance <= 1 && (iDistance == 1 || jDistance == 1)) return true;
         else return false;
     }
 
-    private static bool queenMoveAuthorized(int iQueen, int jQueen, int iTarget, int jTarget)
+    public static bool queenMoveAuthorized(int iQueen, int jQueen, int iTarget, int jTarget)
     {
         int iDistance = Mathf.Abs(calculateDistance(iTarget, iQueen));
         int jDistance = Mathf.Abs(calculateDistance(jTarget, jQueen));
